@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import AuthGuard from "@/components/AuthGuard";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { Users, Plus, LogIn, Shield, X, Lock, Globe, Trash2 } from "lucide-react";
+import { Users, Plus, LogIn, Shield, X, Lock, Globe, Trash2, Settings } from "lucide-react";
 
 interface Community {
   id: string;
@@ -250,13 +250,23 @@ export default function CommunitiesPage() {
                     >
                       Open Feed
                     </Link>
-                    <button
-                      onClick={() => handleLeave(community.id)}
-                      className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                      title="Leave community"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {community.created_by === (user?.id as string) ? (
+                      <Link
+                        href={`/communities/${community.id}`}
+                        className="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                        title="Manage community"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleLeave(community.id)}
+                        className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Leave community"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

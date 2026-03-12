@@ -23,22 +23,36 @@ export default function ShareModal({ opportunityId, opportunityTitle, isOpen, on
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loadingComms, setLoadingComms] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
+    // Reset state when opening
+    setSelectedCommunity("");
+    setMessage("");
+    setShared(false);
+    setCopied(false);
+    setLoadingComms(true);
+
     const fetchCommunities = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("community_members")
-        .select("community_id, communities(id, name)")
-        .eq("user_id", user.id);
-      if (data) {
-        const comms = data.map((d: Record<string, unknown>) => {
-          const c = d.communities as Record<string, unknown>;
-          return { id: c.id as string, name: c.name as string };
-        });
-        setCommunities(comms);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoadingComms(false); return; }
+        const { data } = await supabase
+          .from("community_members")
+          .select("community_id, communities(id, name)")
+          .eq("user_id", user.id);
+        if (data) {
+          const comms = data.map((d: Record<string, unknown>) => {
+            const c = d.communities as Record<string, unknown>;
+            return { id: c.id as string, name: c.name as string };
+          });
+          setCommunities(comms);
+        }
+      } catch (err) {
+        console.error("Failed to fetch communities:", err);
+      } finally {
+        setLoadingComms(false);
       }
     };
     fetchCommunities();
@@ -99,7 +113,9 @@ export default function ShareModal({ opportunityId, opportunityTitle, isOpen, on
               <label className="flex items-center gap-2 text-sm text-slate-400 mb-2">
                 <Users className="w-4 h-4" /> Share to Community
               </label>
-              {communities.length === 0 ? (
+              {loadingComms ? (
+                <p className="text-xs text-slate-500">Loading communities...</p>
+              ) : communities.length === 0 ? (
                 <p className="text-xs text-slate-500">Join a community first to share opportunities</p>
               ) : (
                 <>
