@@ -3,12 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import {
-  getOpportunities,
-  deleteOpportunity,
-  markApplied,
-  togglePublic,
-} from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
 import OpportunityCard from "@/components/OpportunityCard";
 import EmptyState from "@/components/EmptyState";
@@ -52,8 +46,13 @@ export default function DashboardPage() {
 
   const fetchOpportunities = useCallback(async (userId: string) => {
     try {
-      const data = await getOpportunities(userId);
-      setOpportunities(data || []);
+      const { data, error } = await supabase
+        .from("opportunities")
+        .select("*")
+        .eq("user_id", userId)
+        .order("deadline", { ascending: true });
+      if (error) throw error;
+      setOpportunities((data as Opportunity[]) || []);
     } catch (err) {
       console.error("Failed to fetch opportunities:", err);
     } finally {
@@ -99,19 +98,21 @@ export default function DashboardPage() {
   }, [user, fetchOpportunities]);
 
   const handleDelete = async (id: string) => {
-    await deleteOpportunity(id);
+    await supabase.from("opportunities").delete().eq("id", id);
     setOpportunities((prev) => prev.filter((o) => o.id !== id));
   };
 
   const handleApply = async (id: string) => {
-    await markApplied(id);
+    await supabase.from("opportunities").update({ is_applied: true }).eq("id", id);
     setOpportunities((prev) =>
       prev.map((o) => (o.id === id ? { ...o, is_applied: true } : o))
     );
   };
 
   const handleShare = async (id: string) => {
-    await togglePublic(id);
+    const opp = opportunities.find((o) => o.id === id);
+    if (!opp) return;
+    await supabase.from("opportunities").update({ is_public: !opp.is_public }).eq("id", id);
     setOpportunities((prev) =>
       prev.map((o) =>
         o.id === id ? { ...o, is_public: !o.is_public } : o

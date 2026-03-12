@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { extractOpportunity, saveOpportunity } from "@/lib/api";
+import { extractOpportunity } from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import UrgencyBadge from "@/components/UrgencyBadge";
@@ -110,19 +110,25 @@ export default function ExtractPage() {
     setSaving(true);
 
     try {
-      await saveOpportunity({
-        user_id: user.id,
-        company: extractedData.company || "Unknown",
-        role: extractedData.role || "Unknown",
-        type: extractedData.type || "Internship",
-        branch_eligible: extractedData.branch_eligible || "All",
-        cgpa_required: extractedData.cgpa_required || null,
-        deadline: extractedData.deadline || null,
-        location: extractedData.location || "Remote",
-        stipend: extractedData.stipend || "Not mentioned",
-        apply_link: extractedData.apply_link || null,
-        raw_text: extractedData.raw_text || inputText,
-      });
+      const { error: saveError } = await supabase
+        .from("opportunities")
+        .insert({
+          user_id: (user as Record<string, unknown>).id,
+          company: extractedData.company || "Unknown",
+          role: extractedData.role || "Unknown",
+          type: extractedData.type || "Internship",
+          branch_eligible: extractedData.branch_eligible || "All",
+          cgpa_required: extractedData.cgpa_required || null,
+          deadline: extractedData.deadline || null,
+          location: extractedData.location || "Remote",
+          stipend: extractedData.stipend || "Not mentioned",
+          apply_link: extractedData.apply_link || null,
+          raw_text: extractedData.raw_text || inputText,
+          days_left: extractedData.days_left || 99,
+          urgency: extractedData.urgency || "green",
+        });
+
+      if (saveError) throw saveError;
       setSaved(true);
       setTimeout(() => router.push("/dashboard"), 1500);
     } catch (_err) {

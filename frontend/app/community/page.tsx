@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { getCommunity, upvoteOpportunity } from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
 import OpportunityCard from "@/components/OpportunityCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -74,8 +73,13 @@ export default function CommunityPage() {
 
   const fetchCommunity = async () => {
     try {
-      const data = await getCommunity();
-      setOpportunities(data || []);
+      const { data, error } = await supabase
+        .from("opportunities")
+        .select("*, users(name, college, branch)")
+        .eq("is_public", true)
+        .order("upvotes", { ascending: false });
+      if (error) throw error;
+      setOpportunities((data as CommunityOpportunity[]) || []);
     } catch (err) {
       console.error("Failed to fetch community:", err);
     } finally {
@@ -87,14 +91,26 @@ export default function CommunityPage() {
     if (!user) return;
     if (votedIds.has(id)) return;
 
-    const result = await upvoteOpportunity(id, user.id as string);
-    if (result.voted) {
+    try {
+      // Insert upvote record
+      await supabase.from("upvotes").insert({
+        opportunity_id: id,
+        user_id: user.id,
+      });
+
+      // Increment upvote count
+      const opp = opportunities.find((o) => o.id === id);
+      const newCount = ((opp?.upvotes) || 0) + 1;
+      await supabase.from("opportunities").update({ upvotes: newCount }).eq("id", id);
+
       setVotedIds((prev) => new Set([...Array.from(prev), id]));
       setOpportunities((prev) =>
         prev.map((o) =>
-          o.id === id ? { ...o, upvotes: result.upvotes } : o
+          o.id === id ? { ...o, upvotes: newCount } : o
         )
       );
+    } catch {
+      // Already upvoted or error
     }
   };
 
