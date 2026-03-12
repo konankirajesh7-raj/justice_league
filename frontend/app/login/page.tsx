@@ -41,6 +41,7 @@ export default function LoginPage() {
   const [regBranch, setRegBranch] = useState("");
   const [regCgpa, setRegCgpa] = useState("");
   const [regCollege, setRegCollege] = useState("");
+  const [regAge, setRegAge] = useState("");
 
   const branches = [
     "CSE",
@@ -114,6 +115,7 @@ export default function LoginPage() {
           branch: regBranch,
           cgpa: regCgpa ? parseFloat(regCgpa) : null,
           college: regCollege,
+          age: regAge ? parseInt(regAge) : null,
         },
       },
     });
@@ -133,6 +135,7 @@ export default function LoginPage() {
         branch: regBranch,
         cgpa: regCgpa ? parseFloat(regCgpa) : null,
         college: regCollege,
+        age: regAge ? parseInt(regAge) : null,
       });
 
       // If session exists (email confirm disabled), redirect directly
@@ -624,6 +627,16 @@ export default function LoginPage() {
                       className="w-full pl-11 pr-4 py-3 bg-white/5 border border-[#12142A] rounded-lg text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                     />
                   </div>
+
+                  <input
+                    type="number"
+                    min="15"
+                    max="100"
+                    placeholder="Age"
+                    value={regAge}
+                    onChange={(e) => setRegAge(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-[#12142A] rounded-lg text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                  />
 
                   <button
                     type="submit"

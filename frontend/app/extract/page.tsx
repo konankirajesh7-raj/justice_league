@@ -7,6 +7,7 @@ import { extractOpportunity } from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import UrgencyBadge from "@/components/UrgencyBadge";
+import EligibilityCard from "@/components/EligibilityCard";
 import {
   Zap,
   Save,
@@ -21,6 +22,10 @@ import {
   ClipboardPaste,
   Sparkles,
   CheckCircle,
+  AlertTriangle,
+  Copy,
+  ShieldAlert,
+  Wrench,
 } from "lucide-react";
 
 const SAMPLES = [
@@ -66,6 +71,7 @@ Share with everyone!`,
 export default function ExtractPage() {
   const router = useRouter();
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
+  const [userProfile, setUserProfile] = useState<{ branch: string; cgpa: number | null; age: number | null } | null>(null);
   const [inputText, setInputText] = useState("");
   const [extractedData, setExtractedData] = useState<Record<
     string,
@@ -81,7 +87,16 @@ export default function ExtractPage() {
       const {
         data: { user: authUser },
       } = await supabase.auth.getUser();
-      if (authUser) setUser(authUser as unknown as Record<string, unknown>);
+      if (authUser) {
+        setUser(authUser as unknown as Record<string, unknown>);
+        // Fetch profile for eligibility check
+        const { data: profile } = await supabase
+          .from("users")
+          .select("branch, cgpa, age")
+          .eq("id", authUser.id)
+          .single();
+        if (profile) setUserProfile(profile as { branch: string; cgpa: number | null; age: number | null });
+      }
     };
     getUser();
   }, []);
@@ -94,7 +109,7 @@ export default function ExtractPage() {
     setSaved(false);
 
     try {
-      const result = await extractOpportunity(inputText);
+      const result = await extractOpportunity(inputText, user?.id as string);
       setExtractedData(result);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Extraction failed";
@@ -125,6 +140,7 @@ export default function ExtractPage() {
           raw_text: extractedData.raw_text || inputText,
           days_left: extractedData.days_left || 99,
           urgency: extractedData.urgency || "green",
+          required_skills: extractedData.required_skills || null,
         });
 
       if (saveError) throw saveError;
@@ -384,6 +400,72 @@ export default function ExtractPage() {
                 </div>
               )}
 
+              {/* Required Skills */}
+              {extractedData.required_skills && (
+                <div className="mb-4 bg-white/5 border border-white/5 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wrench className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+                      Required Skills
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {String(extractedData.required_skills).split(",").map((skill, i) => (
+                      <span key={i} className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium rounded-full">
+                        {skill.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Duplicate Warning */}
+              {extractedData.isDuplicate && (
+                <div className="mb-4 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+                  <Copy className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-amber-400 font-semibold text-sm">⚠️ Duplicate Detected</p>
+                    <p className="text-amber-400/70 text-xs mt-1">
+                      You already have a similar opportunity saved in your dashboard. Saving again will create a duplicate.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Spam Warning */}
+              {extractedData.isSpam && (
+                <div className="mb-4 bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-red-400 font-semibold text-sm">🚨 Possible Spam Detected</p>
+                      <ul className="mt-2 space-y-1">
+                        {(extractedData.spamReasons as string[])?.map((reason, i) => (
+                          <li key={i} className="text-red-400/70 text-xs flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {reason}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-red-400/50 text-xs mt-2">You can still save it if you believe it&apos;s genuine.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Eligibility Check */}
+              {userProfile && (
+                <div className="mb-6">
+                  <EligibilityCard
+                    profile={userProfile}
+                    opportunity={{
+                      branch_eligible: extractedData.branch_eligible as string,
+                      cgpa_required: extractedData.cgpa_required as number | null,
+                      required_skills: extractedData.required_skills as string | null,
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
                 {saved ? (
@@ -401,7 +483,7 @@ export default function ExtractPage() {
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Save className="w-5 h-5" /> Save to Dashboard
+                        <Save className="w-5 h-5" /> {extractedData.isDuplicate ? "Save Anyway" : extractedData.isSpam ? "Save Anyway (Manual Override)" : "Save to Dashboard"}
                       </>
                     )}
                   </button>

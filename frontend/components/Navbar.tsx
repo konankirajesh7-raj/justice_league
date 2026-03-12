@@ -11,7 +11,9 @@ import {
   LogOut,
   LayoutDashboard,
   ChevronDown,
+  Users,
 } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Navbar() {
   const router = useRouter();
@@ -57,6 +59,7 @@ export default function Navbar() {
     { href: "/extract", label: "Extract" },
     { href: "/dashboard", label: "Dashboard" },
     { href: "/community", label: "Community" },
+    { href: "/communities", label: "My Groups" },
   ];
 
   const isActive = (href: string) => pathname === href;
@@ -93,7 +96,9 @@ export default function Navbar() {
           {/* Right side */}
           <div className="hidden md:flex items-center gap-3">
             {user ? (
-              <div className="relative">
+              <>
+                <NotificationBell />
+                <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-all duration-200"
@@ -153,6 +158,7 @@ export default function Navbar() {
                   </>
                 )}
               </div>
+              </>
             ) : (
               <div className="flex items-center gap-3">
                 <Link

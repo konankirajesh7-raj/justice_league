@@ -7,6 +7,7 @@ import AuthGuard from "@/components/AuthGuard";
 import OpportunityCard from "@/components/OpportunityCard";
 import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import ShareModal from "@/components/ShareModal";
 import {
   Plus,
   Search,
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   Clock,
   Filter,
+  Bell,
 } from "lucide-react";
 
 interface Opportunity {
@@ -34,6 +36,7 @@ interface Opportunity {
   is_public: boolean;
   upvotes: number;
   created_at: string;
+  required_skills?: string | null;
 }
 
 export default function DashboardPage() {
@@ -43,6 +46,8 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState("All");
   const [sortBy, setSortBy] = useState("Deadline");
   const [searchQuery, setSearchQuery] = useState("");
+  const [shareOppId, setShareOppId] = useState<string | null>(null);
+  const [shareOppTitle, setShareOppTitle] = useState("");
 
   const fetchOpportunities = useCallback(async (userId: string) => {
     try {
@@ -112,12 +117,8 @@ export default function DashboardPage() {
   const handleShare = async (id: string) => {
     const opp = opportunities.find((o) => o.id === id);
     if (!opp) return;
-    await supabase.from("opportunities").update({ is_public: !opp.is_public }).eq("id", id);
-    setOpportunities((prev) =>
-      prev.map((o) =>
-        o.id === id ? { ...o, is_public: !o.is_public } : o
-      )
-    );
+    setShareOppId(id);
+    setShareOppTitle(`${opp.company} - ${opp.role}`);
   };
 
   // Filter and sort
@@ -173,6 +174,25 @@ export default function DashboardPage() {
               Track all your opportunities in one place. Never miss a deadline.
             </p>
           </div>
+
+          {/* Deadline Alerts */}
+          {opportunities.filter((o) => o.days_left !== null && (o.days_left as number) > 0 && (o.days_left as number) <= 3).length > 0 && (
+            <div className="mb-6 bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Bell className="w-4 h-4 text-red-400 animate-pulse" />
+                <span className="text-sm font-bold text-red-400">⏰ Upcoming Deadlines!</span>
+              </div>
+              <div className="space-y-1">
+                {opportunities
+                  .filter((o) => o.days_left !== null && (o.days_left as number) > 0 && (o.days_left as number) <= 3)
+                  .map((o) => (
+                    <p key={o.id} className="text-xs text-red-400/80">
+                      <span className="font-semibold text-red-300">{o.company}</span> — {o.role} · {o.days_left} day(s) left ({o.deadline})
+                    </p>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -301,6 +321,16 @@ export default function DashboardPage() {
           >
             <Plus className="w-6 h-6" />
           </Link>
+
+          {/* Share Modal */}
+          {shareOppId && (
+            <ShareModal
+              opportunityId={shareOppId}
+              opportunityTitle={shareOppTitle}
+              isOpen={!!shareOppId}
+              onClose={() => setShareOppId(null)}
+            />
+          )}
         </div>
       </div>
     </AuthGuard>

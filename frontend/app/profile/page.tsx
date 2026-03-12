@@ -19,6 +19,7 @@ import {
   Share2,
   XCircle,
   AlertTriangle,
+  CalendarDays,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -36,6 +37,7 @@ export default function ProfilePage() {
   const [cgpa, setCgpa] = useState("");
   const [college, setCollege] = useState("");
   const [phone, setPhone] = useState("");
+  const [age, setAge] = useState("");
 
   const [stats, setStats] = useState({
     total: 0,
@@ -79,6 +81,7 @@ export default function ProfilePage() {
         setCgpa(profile.cgpa?.toString() || "");
         setCollege(profile.college || "");
         setPhone(profile.phone || "");
+        setAge(profile.age?.toString() || "");
       }
 
       // Fetch stats
@@ -119,6 +122,7 @@ export default function ProfilePage() {
         cgpa: cgpa ? parseFloat(cgpa) : null,
         college: college,
         phone: phone,
+        age: age ? parseInt(age) : null,
       });
 
     if (updateError) {
@@ -315,6 +319,21 @@ export default function ProfilePage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 XXXXX XXXXX"
+                  className="w-full px-4 py-3 bg-white/5 border border-[#12142A] rounded-lg text-white placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm text-slate-400 mb-1.5">
+                  <CalendarDays className="w-4 h-4" /> Age
+                </label>
+                <input
+                  type="number"
+                  min="15"
+                  max="100"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="Your age"
                   className="w-full px-4 py-3 bg-white/5 border border-[#12142A] rounded-lg text-white placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                 />
               </div>

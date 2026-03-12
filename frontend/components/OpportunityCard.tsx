@@ -32,6 +32,7 @@ interface Opportunity {
   is_public: boolean;
   upvotes: number;
   created_at: string;
+  required_skills?: string | null;
   users?: {
     name: string;
     college: string;
@@ -158,6 +159,17 @@ export default function OpportunityCard({
               {opportunity.users.college || "Unknown College"}
             </span>
           </p>
+        </div>
+      )}
+
+      {/* Required Skills */}
+      {opportunity.required_skills && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {opportunity.required_skills.split(",").map((skill: string, i: number) => (
+            <span key={i} className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium rounded-full">
+              {skill.trim()}
+            </span>
+          ))}
         </div>
       )}
 
