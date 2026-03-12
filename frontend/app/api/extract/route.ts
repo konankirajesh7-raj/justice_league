@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
-const EXTRACT_PROMPT = `You are an expert opportunity parser for Indian college students. Extract details from this student opportunity message and return ONLY valid JSON with absolutely no extra text, no markdown, no backticks.
+const EXTRACT_PROMPT = `Extract opportunity details from this message. Return ONLY a JSON object, nothing else.
+
+JSON format:
+{"company":"org name","role":"position title","type":"Job","branch_eligible":"All","cgpa_required":null,"deadline":null,"location":"Not mentioned","stipend":"Not mentioned","apply_link":null}
 
 Rules:
-- If its a government job, set type to "Job"
-- company should be the organization name
-- role should be the position/post name 
-- branch_eligible should be relevant branches or "All"
-- If deadline is mentioned, convert to YYYY-MM-DD format
-- If no stipend/salary mentioned, use "Not mentioned"
-- Extract any apply link/URL from the message
+- type must be one of: Internship, Job, Hackathon, Scholarship
+- deadline format: YYYY-MM-DD or null
+- cgpa_required: number or null
+- apply_link: URL string or null
 
-Return EXACTLY this JSON structure:
-{"company":"org name","role":"position","type":"Internship","branch_eligible":"All","cgpa_required":null,"deadline":null,"location":"Remote","stipend":"Not mentioned","apply_link":null}
-
-Message to parse:
+Message:
 `;
 
 function calculateUrgency(deadlineStr: string | null): { days_left: number; urgency: string } {
@@ -34,15 +31,31 @@ function calculateUrgency(deadlineStr: string | null): { days_left: number; urge
   }
 }
 
-function cleanAndParseJSON(raw: string): Record<string, unknown> {
-  // Strip markdown code fences
+function extractFirstJSON(raw: string): Record<string, unknown> {
+  // Remove markdown fences
   raw = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-  // Try to find JSON object in the response
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return JSON.parse(jsonMatch[0]);
+  
+  // Find the first { and extract balanced JSON
+  const start = raw.indexOf("{");
+  if (start === -1) throw new Error("No JSON object found in response");
+  
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < raw.length; i++) {
+    if (raw[i] === "{") depth++;
+    else if (raw[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
   }
-  return JSON.parse(raw);
+  
+  if (end === -1) throw new Error("Unbalanced JSON braces");
+  
+  const jsonStr = raw.substring(start, end + 1);
+  return JSON.parse(jsonStr);
 }
 
 async function extractWithGroq(text: string) {
@@ -53,43 +66,60 @@ async function extractWithGroq(text: string) {
   const response = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [
-      { role: "system", content: "You are a JSON-only response bot. Return only valid JSON, no other text." },
+      { role: "system", content: "You output only valid JSON. No explanations, no markdown, just a single JSON object." },
       { role: "user", content: EXTRACT_PROMPT + text }
     ],
-    max_tokens: 500,
-    temperature: 0.1,
+    max_tokens: 400,
+    temperature: 0,
+    response_format: { type: "json_object" },
   });
   const raw = response.choices[0]?.message?.content?.trim() || "";
-  console.log("[Groq] Raw response:", raw.substring(0, 200));
-  return cleanAndParseJSON(raw);
+  console.log("[Groq] Response:", raw.substring(0, 300));
+  return extractFirstJSON(raw);
 }
 
 async function extractWithGemini(text: string) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: EXTRACT_PROMPT + text }] }],
-        generationConfig: { temperature: 0.1 },
-      }),
-    }
-  );
+  // Try gemini-2.0-flash first, then gemini-1.5-flash
+  const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
   
-  if (!res.ok) {
-    const errText = await res.text();
-    console.error("[Gemini] HTTP error:", res.status, errText.substring(0, 200));
-    throw new Error(`Gemini API returned ${res.status}`);
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: EXTRACT_PROMPT + text }] }],
+            generationConfig: { temperature: 0, responseMimeType: "application/json" },
+          }),
+        }
+      );
+      
+      if (res.status === 429) {
+        console.log(`[Gemini] ${model} rate limited, trying next model...`);
+        continue;
+      }
+      
+      if (!res.ok) {
+        console.error(`[Gemini] ${model} error:`, res.status);
+        continue;
+      }
+      
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      console.log(`[Gemini ${model}] Response:`, raw.substring(0, 300));
+      return extractFirstJSON(raw);
+    } catch (err) {
+      console.error(`[Gemini] ${model} failed:`, err);
+      continue;
+    }
   }
   
-  const data = await res.json();
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-  console.log("[Gemini] Raw response:", raw.substring(0, 200));
-  return cleanAndParseJSON(raw);
+  throw new Error("All Gemini models failed or rate limited");
 }
 
 export async function POST(req: NextRequest) {
@@ -101,14 +131,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
-    // Strip emojis and special unicode for cleaner AI parsing
+    // Clean non-ASCII chars for better AI parsing
     const cleanText = text.replace(/[^\x00-\x7F]/g, " ").replace(/\s+/g, " ").trim();
 
     let result;
     let groqError = "";
     let geminiError = "";
 
-    // Try Groq first, fallback to Gemini
+    // Try Groq first (fast), fallback to Gemini
     try {
       result = await extractWithGroq(cleanText);
     } catch (e1) {
@@ -120,7 +150,7 @@ export async function POST(req: NextRequest) {
         geminiError = String(e2);
         console.error("[Extract] Gemini also failed:", geminiError);
         return NextResponse.json(
-          { error: `Both AI providers failed. Groq: ${groqError}. Gemini: ${geminiError}` },
+          { error: `Groq: ${groqError}. Gemini: ${geminiError}` },
           { status: 500 }
         );
       }
