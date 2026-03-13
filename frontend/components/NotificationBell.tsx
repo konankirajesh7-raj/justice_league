@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface Notification {
   id: string;
@@ -18,34 +19,52 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const router = useRouter();
 
   const generateDeadlineNotifications = useCallback(async (uid: string) => {
+    // Check deadlines for 1, 3, and 7 days
     const { data: opps } = await supabase
       .from("opportunities")
       .select("id, company, role, deadline, days_left")
       .eq("user_id", uid)
-      .lte("days_left", 3)
-      .gt("days_left", 0);
+      .lte("days_left", 7)
+      .gt("days_left", 0)
+      .eq("is_applied", false);
 
-    if (opps && opps.length > 0) {
-      for (const opp of opps) {
-        const exists = await supabase
-          .from("notifications")
-          .select("id")
-          .eq("user_id", uid)
-          .eq("link", `/dashboard#${opp.id}`)
-          .single();
+    if (!opps || opps.length === 0) return;
 
-        if (!exists.data) {
-          await supabase.from("notifications").insert({
-            user_id: uid,
-            type: "deadline",
-            title: `⏰ ${opp.company} deadline approaching!`,
-            message: `${opp.role} — ${opp.days_left} day(s) left (${opp.deadline})`,
-            link: `/dashboard#${opp.id}`,
-          });
-        }
-      }
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    for (const opp of opps) {
+      const daysLeft = opp.days_left;
+      if (![1, 3, 7].includes(daysLeft)) continue;
+
+      // Deduplicate: one notification per opp per day
+      const { data: existing } = await supabase
+        .from("notifications")
+        .select("id")
+        .eq("user_id", uid)
+        .eq("type", "deadline")
+        .like("message", `%${opp.id}%`)
+        .gte("created_at", `${todayStr}T00:00:00`)
+        .maybeSingle();
+
+      if (existing) continue;
+
+      const urgency =
+        daysLeft === 1
+          ? "⚠️ URGENT — Deadline Tomorrow!"
+          : daysLeft === 3
+          ? "⏳ Deadline in 3 Days"
+          : "📅 Deadline in 1 Week";
+
+      await supabase.from("notifications").insert({
+        user_id: uid,
+        type: "deadline",
+        title: urgency,
+        message: `💼 ${opp.company} — ${opp.role} | Due: ${opp.deadline} | id:${opp.id}`,
+        link: "/dashboard",
+      });
     }
   }, []);
 
@@ -54,9 +73,7 @@ export default function NotificationBell() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
-
       await generateDeadlineNotifications(user.id);
-
       const { data } = await supabase
         .from("notifications")
         .select("*")
@@ -68,7 +85,7 @@ export default function NotificationBell() {
     init();
   }, [generateDeadlineNotifications]);
 
-  // Realtime
+  // Real-time listener — shows new notifications instantly without refresh
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
@@ -95,6 +112,23 @@ export default function NotificationBell() {
       .eq("user_id", userId)
       .eq("is_read", false);
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  };
+
+  const handleClick = async (notification: Notification) => {
+    if (!notification.is_read) {
+      await supabase.from("notifications").update({ is_read: true }).eq("id", notification.id);
+      setNotifications((prev) =>
+        prev.map((n) => n.id === notification.id ? { ...n, is_read: true } : n)
+      );
+    }
+    setOpen(false);
+    if (notification.link) router.push(notification.link);
+  };
+
+  const deleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await supabase.from("notifications").delete().eq("id", id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   const typeIcons: Record<string, string> = {
@@ -126,10 +160,7 @@ export default function NotificationBell() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#12142A]">
               <h3 className="text-sm font-bold text-white">Notifications</h3>
               {unreadCount > 0 && (
-                <button
-                  onClick={markAllRead}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
+                <button onClick={markAllRead} className="text-xs text-indigo-400 hover:text-indigo-300">
                   Mark all read
                 </button>
               )}
@@ -137,13 +168,14 @@ export default function NotificationBell() {
             <div className="overflow-y-auto max-h-[340px]">
               {notifications.length === 0 ? (
                 <div className="p-6 text-center text-slate-500 text-sm">
-                  No notifications yet
+                  No notifications yet 🔔
                 </div>
               ) : (
                 notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`px-4 py-3 border-b border-[#12142A]/50 hover:bg-white/5 transition-colors cursor-pointer ${
+                    onClick={() => handleClick(n)}
+                    className={`px-4 py-3 border-b border-[#12142A]/50 hover:bg-white/5 transition-colors cursor-pointer group ${
                       !n.is_read ? "bg-indigo-500/5" : ""
                     }`}
                   >
@@ -154,15 +186,25 @@ export default function NotificationBell() {
                           {n.title}
                         </p>
                         {n.message && (
-                          <p className="text-xs text-slate-500 mt-0.5 truncate">{n.message}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">
+                            {n.message.replace(/\|?\s*id:[a-f0-9-]+/g, "")}
+                          </p>
                         )}
                         <p className="text-[10px] text-slate-600 mt-1">
-                          {new Date(n.created_at).toLocaleDateString()}
+                          {new Date(n.created_at).toLocaleDateString("en-IN", {
+                            day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+                          })}
                         </p>
                       </div>
-                      {!n.is_read && (
-                        <div className="w-2 h-2 bg-indigo-400 rounded-full mt-1.5 flex-shrink-0" />
-                      )}
+                      <div className="flex flex-col items-center gap-1">
+                        {!n.is_read && <div className="w-2 h-2 bg-indigo-400 rounded-full flex-shrink-0" />}
+                        <button
+                          onClick={(e) => deleteNotification(e, n.id)}
+                          className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
