@@ -73,13 +73,38 @@ export default function CommunityPage() {
 
   const fetchCommunity = async () => {
     try {
+      // Step 1: Fetch public opportunities without user join (FK goes to auth.users, not public.users)
       const { data, error } = await supabase
         .from("opportunities")
-        .select("*, users(name, college, branch)")
+        .select("*")
         .eq("is_public", true)
         .order("upvotes", { ascending: false });
       if (error) throw error;
-      setOpportunities((data as CommunityOpportunity[]) || []);
+
+      if (data && data.length > 0) {
+        // Step 2: Look up user profiles from public.users table
+        const userIds = Array.from(new Set(data.map((o: Record<string, unknown>) => o.user_id as string)));
+        const { data: usersData } = await supabase
+          .from("users")
+          .select("id, name, college, branch")
+          .in("id", userIds);
+
+        const usersMap: Record<string, { name: string; college: string; branch: string }> = {};
+        if (usersData) {
+          for (const u of usersData) {
+            usersMap[u.id] = { name: u.name, college: u.college, branch: u.branch };
+          }
+        }
+
+        // Attach user info to each opportunity
+        const enriched = data.map((o: Record<string, unknown>) => ({
+          ...o,
+          users: usersMap[o.user_id as string] || { name: "Anonymous", college: "", branch: "" },
+        }));
+        setOpportunities(enriched as CommunityOpportunity[]);
+      } else {
+        setOpportunities([]);
+      }
     } catch (err) {
       console.error("Failed to fetch community:", err);
     } finally {
