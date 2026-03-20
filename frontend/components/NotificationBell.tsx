@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { Bell, X } from "lucide-react";
+import { Bell, X, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Notification {
@@ -131,6 +131,13 @@ export default function NotificationBell() {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  const handleExtractClick = (e: React.MouseEvent, message: string) => {
+    e.stopPropagation();
+    setOpen(false);
+    const textToExtract = message.replace(/\|?\s*id:[a-f0-9-]+/g, "").trim();
+    router.push(`/extract?text=${encodeURIComponent(textToExtract)}`);
+  };
+
   const typeIcons: Record<string, string> = {
     deadline: "⏰",
     community: "👥",
@@ -186,9 +193,18 @@ export default function NotificationBell() {
                           {n.title}
                         </p>
                         {n.message && (
-                          <p className="text-xs text-slate-500 mt-0.5 truncate">
-                            {n.message.replace(/\|?\s*id:[a-f0-9-]+/g, "")}
-                          </p>
+                          <div className="mt-1">
+                            <p className="text-xs text-slate-500 whitespace-pre-wrap line-clamp-2 mb-1.5">
+                              {n.message.replace(/\|?\s*id:[a-f0-9-]+/g, "")}
+                            </p>
+                            <button
+                              onClick={(e) => handleExtractClick(e, n.message)}
+                              className="inline-flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-[10px] font-medium rounded border border-indigo-500/20 transition-colors"
+                            >
+                              <Zap className="w-3 h-3" />
+                              Extract Details
+                            </button>
+                          </div>
                         )}
                         <p className="text-[10px] text-slate-600 mt-1">
                           {new Date(n.created_at).toLocaleDateString("en-IN", {
