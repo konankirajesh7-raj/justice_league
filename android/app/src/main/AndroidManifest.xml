@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -7,10 +8,6 @@
 
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Notification Listener (reads OTHER apps' notifications) -->
-    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-        tools:ignore="ProtectedPermissions" />
 
     <!-- Foreground Service (keeps listener alive) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -59,25 +56,26 @@
         </activity>
 
         <!-- Notification Listener Service (reads WhatsApp, Telegram etc.) -->
+        <!-- NOTE: NotificationListenerService does NOT use foregroundServiceType -->
         <service
             android:name=".OpportunityNotificationService"
             android:label="@string/notification_service_label"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-            android:exported="true"
-            android:foregroundServiceType="specialUse">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.notification.default_filter_types"
-                android:value="conversations|alerting" />
         </service>
 
         <!-- Foreground Service to keep listener alive -->
         <service
             android:name=".NotificationForegroundService"
             android:foregroundServiceType="specialUse"
-            android:exported="false" />
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="monitorDeviceState" />
+        </service>
 
         <!-- Boot completed receiver -->
         <receiver

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Vector drawable: bell icon for splash screen and notification small icon.
-  Uses the same indigo color palette as the web app.
+  Vector drawable: bell icon for splash screen.
+  NOTE: Android vector drawables only support <path> and <group> elements.
+  No <circle>, <rect>, or <ellipse> — those are SVG-only.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -9,24 +10,29 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Dark background circle -->
+    <!-- Dark background fill -->
     <path
         android:fillColor="#07080F"
         android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
 
-    <!-- Indigo circle bg for icon -->
+    <!-- Indigo circle background using arc paths -->
     <path
         android:fillColor="#6366F1"
-        android:pathData="M54,20 A34,34 0 1,1 53.99,20 Z" />
+        android:pathData="M54,20 A34,34 0 1 0 54,88 A34,34 0 1 0 54,20 Z" />
 
     <!-- Bell body (white) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,30 C47,30 41,36 41,44 L41,54 L38,57 L38,59 L70,59 L70,57 L67,54 L67,44 C67,36 61,30 54,30 Z" />
+        android:pathData="M54,36 C52,36 50,37 49,38 C46,40 44,44 44,48 L44,58 L41,61 L41,63 L67,63 L67,61 L64,58 L64,48 C64,44 62,40 59,38 C58,37 56,36 54,36 Z" />
 
-    <!-- Bell clapper -->
+    <!-- Bell bottom clapper arch -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M50,59 A4,4 0 0,0 58,59 Z" />
+        android:pathData="M50,63 A4,4 0 0 0 58,63 Z" />
+
+    <!-- Bell top stem -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,34 A2,2 0 1 0 56,34 A2,2 0 1 0 52,34 Z" />
 
 </vector>
