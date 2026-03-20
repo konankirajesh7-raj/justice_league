@@ -1,1 +1,1 @@
-Full audit: fix 6 runtime bugs - channel race condition, org.json conflict, wrong Settings intent, deprecated databaseEnabled, duplicate annotation, missing setIntent
+Fix Gradle build config: AGP 8.2.2 with Gradle 8.6, Java 17, clean settings.gradle
