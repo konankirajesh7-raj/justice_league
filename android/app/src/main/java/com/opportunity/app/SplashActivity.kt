@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.opportunity.app.databinding.ActivitySplashBinding
@@ -18,22 +20,20 @@ class SplashActivity : AppCompatActivity() {
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Animate logo
+        // Animate logo and tagline in
         binding.logoText.alpha = 0f
         binding.taglineText.alpha = 0f
         binding.logoText.animate().alpha(1f).setDuration(600).start()
         binding.taglineText.animate().alpha(1f).setStartDelay(300).setDuration(600).start()
 
-        // After 1.8s: check notification permission, then go to main
+        // After 1.8 s: check permission, then navigate to main
         Handler(Looper.getMainLooper()).postDelayed({
-            checkPermissionAndProceed()
+            if (!isFinishing) checkPermissionAndProceed()
         }, 1800)
     }
 
     private fun checkPermissionAndProceed() {
-        val isEnabled = NotificationPermissionHelper.isNotificationListenerEnabled(this)
-        if (!isEnabled) {
-            // Show permission dialog before main activity
+        if (!NotificationPermissionHelper.isNotificationListenerEnabled(this)) {
             showPermissionRationale()
         } else {
             goToMain()
@@ -41,15 +41,16 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun showPermissionRationale() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(this)
             .setTitle("Enable Notification Access")
             .setMessage(
                 "OpportUnity needs Notification Access to automatically detect " +
-                "opportunities in your WhatsApp messages.\n\n" +
-                "Tap 'Open Settings', then find OpportUnity and toggle it ON."
+                    "opportunities in your WhatsApp messages.\n\n" +
+                    "Tap \u2018Open Settings\u2019, find OpportUnity, and toggle it ON.",
             )
             .setPositiveButton("Open Settings") { _, _ ->
-                startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+                // Use the correct constant from Settings — avoids string typo bugs
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                 goToMain()
             }
             .setNegativeButton("Skip for now") { _, _ ->

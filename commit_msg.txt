@@ -1,1 +1,0 @@
-Fix Android Gradle sync: add wrapper jar and properties, fix manifest xmlns:tools, fix vector drawables, add ic_launcher_round, add gradlew scripts

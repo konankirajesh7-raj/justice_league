@@ -3,6 +3,7 @@ package com.opportunity.app
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import android.webkit.JavascriptInterface
 
 /**
@@ -50,7 +51,7 @@ class WebAppInterface(private val context: Context) {
     /** Open Notification Listener settings */
     @JavascriptInterface
     fun openNotificationSettings() {
-        val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").apply {
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(intent)

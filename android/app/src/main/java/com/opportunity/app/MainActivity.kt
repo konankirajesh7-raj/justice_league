@@ -4,8 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.KeyEvent
-import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -14,6 +14,7 @@ import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import com.opportunity.app.databinding.ActivityMainBinding
 
+@SuppressLint("SetJavaScriptEnabled")
 class MainActivity : AppCompatActivity() {
 
     companion object {
@@ -23,7 +24,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var webView: WebView
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -33,19 +33,17 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
 
         // Start the foreground service to keep notification listener alive
-        val serviceIntent = Intent(this, NotificationForegroundService::class.java)
-        startForegroundService(serviceIntent)
+        startForegroundService(Intent(this, NotificationForegroundService::class.java))
 
         // Handle deep link (opportunity://extract?text=...)
         handleDeepLink(intent)
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
         with(webView.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
-            databaseEnabled = true
+            // databaseEnabled is deprecated in API 30+ and enabled by default; omitting it
             setSupportZoom(false)
             builtInZoomControls = false
             displayZoomControls = false
@@ -54,19 +52,23 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             cacheMode = WebSettings.LOAD_DEFAULT
             mediaPlaybackRequiresUserGesture = false
-            userAgentString = "${webView.settings.userAgentString} OpportUnityAndroid/1.0"
+            // Append our tag to the user agent so the server can detect the Android app
+            userAgentString = "${userAgentString} OpportUnityAndroid/1.0"
         }
 
         // Add JavaScript → Android bridge
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
 
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: WebResourceRequest,
+            ): Boolean {
                 val url = request.url.toString()
                 return when {
                     // Stay inside the app for our domain
                     url.startsWith(WEB_APP_URL) -> false
-                    // Open external links in browser
+                    // Open external links in the system browser
                     url.startsWith("http") -> {
                         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         true
@@ -77,10 +79,10 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
-                // Inject Android detection so the web app knows it's in the Android shell
+                // Let the web app know it's running in the native Android shell
                 view.evaluateJavascript(
                     "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.0';",
-                    null
+                    null,
                 )
             }
         }
@@ -91,6 +93,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent) // update the intent returned by getIntent()
         handleDeepLink(intent)
     }
 
@@ -99,8 +102,7 @@ class MainActivity : AppCompatActivity() {
         if (data.scheme == "opportunity" && data.host == "extract") {
             val text = data.getQueryParameter("text") ?: return
             val encoded = Uri.encode(text)
-            val targetUrl = "$WEB_APP_URL/extract?text=$encoded"
-            webView.loadUrl(targetUrl)
+            webView.loadUrl("$WEB_APP_URL/extract?text=$encoded")
         }
     }
 
@@ -120,5 +122,10 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         webView.onPause()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        webView.destroy()
+        super.onDestroy()
     }
 }

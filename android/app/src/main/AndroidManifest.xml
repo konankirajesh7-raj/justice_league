@@ -2,21 +2,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network -->
+    <!-- Network access for the WebView and API calls -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Notifications -->
+    <!-- Show our own local notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Foreground Service (keeps listener alive) -->
+    <!-- Run a foreground service (keeps notification listener alive) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
-    <!-- Vibrate for alerts -->
+    <!-- Vibrate device when an opportunity is found -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- Boot receiver to restart listener service -->
+    <!-- Restart the listener service after device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
@@ -28,56 +28,60 @@
         android:theme="@style/Theme.OpportUnity"
         android:usesCleartextTraffic="false">
 
-        <!-- Splash Screen -->
+        <!-- Splash screen → grants permission if needed → goes to MainActivity -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.OpportUnity.Splash"
-            android:noHistory="true">
+            android:noHistory="true"
+            android:theme="@style/Theme.OpportUnity.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Main WebView Activity -->
+        <!-- Main activity: full-screen WebView + deep-link handler -->
         <activity
             android:name=".MainActivity"
-            android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Deep link: opportunity://extract?text=... -->
+            <!-- Deep link: opportunity://extract?text=... (from notification taps) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="opportunity" android:host="extract" />
+                <data
+                    android:host="extract"
+                    android:scheme="opportunity" />
             </intent-filter>
         </activity>
 
-        <!-- Notification Listener Service (reads WhatsApp, Telegram etc.) -->
-        <!-- NOTE: NotificationListenerService does NOT use foregroundServiceType -->
+        <!--
+             NotificationListenerService — reads WhatsApp and Telegram notifications.
+             Note: Does NOT use foregroundServiceType (that attribute is only for Service subclasses).
+             The BIND_NOTIFICATION_LISTENER_SERVICE permission is set on the <service>, NOT in <uses-permission>.
+        -->
         <service
             android:name=".OpportunityNotificationService"
+            android:exported="true"
             android:label="@string/notification_service_label"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-            android:exported="true">
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
 
-        <!-- Foreground Service to keep listener alive -->
+        <!--
+             Foreground service — keeps the notification listener alive on aggressive OEMs.
+             foregroundServiceType="specialUse" is required when targeting API 34+.
+        -->
         <service
             android:name=".NotificationForegroundService"
-            android:foregroundServiceType="specialUse"
-            android:exported="false">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="monitorDeviceState" />
-        </service>
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
 
-        <!-- Boot completed receiver -->
+        <!-- Restart foreground service after device boots -->
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

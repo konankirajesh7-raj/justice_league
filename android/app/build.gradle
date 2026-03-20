@@ -35,6 +35,12 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
 }
 
 dependencies {
@@ -45,12 +51,12 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
-    // HTTP client for calling extract API
+    // HTTP client for calling the extract API (OkHttp 4.x requires Java 8 APIs — OK with minSdk 26)
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
-    // JSON parsing
-    implementation 'org.json:json:20231013'
+    // NOTE: Do NOT add org.json — Android platform already bundles it.
+    // Adding org.json as a Gradle dependency causes "Duplicate class" build errors.
 
-    // Splash screen
+    // Splash screen API
     implementation 'androidx.core:core-splashscreen:1.0.1'
 }
