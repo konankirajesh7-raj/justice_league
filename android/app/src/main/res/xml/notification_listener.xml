@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Declares which notification filter types this service will receive.
+  Restricting to 'alerting' reduces battery drain from purely silent notifications.
+-->
+<notification-listener
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.opportunity.app.MainActivity">
+</notification-listener>

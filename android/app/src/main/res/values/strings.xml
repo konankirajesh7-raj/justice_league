@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpportUnity</string>
+    <string name="notification_service_label">OpportUnity Opportunity Scanner</string>
+    <string name="notification_channel_found">Opportunities Found</string>
+    <string name="notification_channel_persistent">Listening Status</string>
+    <string name="notification_persistent_title">OpportUnity is watching 🔔</string>
+    <string name="notification_persistent_text">Auto-extracting opportunities from WhatsApp</string>
+    <string name="permission_dialog_title">Enable Notification Access</string>
+    <string name="permission_dialog_message">OpportUnity needs Notification Access to automatically detect opportunities in your WhatsApp messages.\n\nTap \'Open Settings\', find OpportUnity and toggle it ON.</string>
+    <string name="permission_dialog_positive">Open Settings</string>
+    <string name="permission_dialog_negative">Skip for now</string>
+    <string name="tagline">Never miss an opportunity buried in WhatsApp</string>
+</resources>

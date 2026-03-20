@@ -1,0 +1,13 @@
+# Add to .gitignore
+.gradle/
+.idea/
+*.iml
+local.properties
+android/app/release/
+android/app/debug/
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/

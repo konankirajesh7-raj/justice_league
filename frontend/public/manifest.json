@@ -1,0 +1,42 @@
+{
+  "name": "OpportUnity",
+  "short_name": "OpportUnity",
+  "description": "Never miss an opportunity buried in WhatsApp. AI-powered opportunity tracker for Indian college students.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07080F",
+  "theme_color": "#6366F1",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity", "utilities"],
+  "lang": "en-IN",
+  "shortcuts": [
+    {
+      "name": "Extract Opportunity",
+      "short_name": "Extract",
+      "description": "Paste a WhatsApp message to extract opportunity details",
+      "url": "/extract",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View all saved opportunities",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

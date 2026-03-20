@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#6366F1</color>
+    <color name="primary_dark">#4F46E5</color>
+    <color name="background">#07080F</color>
+    <color name="surface">#0A0B15</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_background">#E2E8F0</color>
+    <color name="accent_purple">#A855F7</color>
+    <color name="accent_emerald">#10B981</color>
+    <color name="text_muted">#64748B</color>
+    <color name="splash_background">#07080F</color>
+</resources>
